@@ -13,28 +13,25 @@
     HIGHLIGHT_COLOR         db 4        ; Cor vermelha para seleção
     NORMAL_COLOR            db 7        ; Cor cinza para botões não selecionados
     DELTA_TIME              dw 00000h, 061A8h
-    TEXT_COLOR              db 2        ; Cor verde para o texto
     
     
     ; Variáveis auxiliares
     menu                    db 0        ; Controle do menu (0 = Iniciar, 1 = Sair)
     screen                  db 0        ; Controle de tela
-    max_colunas dw 80       ; Número máximo de colunas (80)
-    max_linhas dw 12        ; Número máximo de linhas (12)
     
     ; Título
-    title_display db " _   __         _____  _                ", 13,10
-                   db "| | / /        /  ___|| |               ", 13,10
-                   db "| |/ /  ______ \ `--. | |_   __ _  _ __ ", 13,10
-                   db "|    \ |______| `--. \| __| / _` || '__|", 13,10
-                   db "| |\  \        /\__/ /| |_ | (_| || |   ", 13,10
-                   db "\_| \_/        \____/  \__| \__,_||_|   ", 13,10
-                   db "______         _                 _      ", 13,10
-                   db "| ___ \       | |               | |     ", 13,10
-                   db "| |_/ /  __ _ | |_  _ __   ___  | |     ", 13,10
-                   db "|  __/  / _` || __| / '__| / _ \ | |     ", 13,10
-                   db "| |    | (_| || |_ | |   | (_) || |     ", 13,10
-                   db "\_|     \__,_| \__||_|    \___/ |_|     ", 13,10
+    title_display  db " _   __         _____  _                "
+                   db "| | / /        /  ___|| |               "
+                   db "| |/ /  ______ \ `--. | |_   __ _  _ __ "
+                   db "|    \ |______| `--. \| __| / _` || '__|"
+                   db "| |\  \        /\__/ /| |_ | (_| || |   "
+                   db "|_| \_/        \____/  \__| \__,_||_|   "
+                   db "   ______         _                 _   "
+                   db "   | ___ \       | |               | |  "
+                   db "   | |_/ /  __ _ | |_  _ __   ___  | |  "
+                   db "   |  __/  / _` || __|/ '__| / _ \ | |  "
+                   db "   | |    | (_| || |_ | |   | (_) || |  "
+                   db "   |_|     \__,_| \__||_|    \___/ |_|  ",13,10
 
     ; Calculando o comprimento do título
     title_display_length equ $-title_display
@@ -53,51 +50,21 @@
 
 .code
 
+;=====================================================================
 show_title_menu proc
-    mov ax, ds
+
+
+    mov ax, ds 
     mov es, ax
 
-    ; Definir posição na tela (linha 5, coluna 0)
-    mov ah, 02h              ; Função para mover o cursor
-    xor bh, bh               ; Página de vídeo 0
-    mov dh, 5                ; Linha 5 (um pouco abaixo do topo)
-    mov dl, 0                ; Coluna 0
-    int 10h                  ; Chamada para mover o cursor
-
-    ; Exibir título com limite de 80 colunas
     mov bp, offset title_display
-    mov cx, title_display_length ; Tamanho do título
-    mov bl, TEXT_COLOR        ; Cor do texto (por exemplo, verde)
-    
-    ; Variáveis de controle para controlar a largura da linha
-    mov si, 0                 ; Índice para percorrer o título
-    mov dl, 0                 ; Coluna inicial
-    
-    ; Carregar a parte baixa de max_colunas (80 colunas)
-    mov al, 80                ; Limitar a 80 colunas, 0x50 em hexadecimal
-    
-show_title_loop:
-    ; Exibir um caractere do título
-    mov al, [bp + si]         ; Carregar caractere
-    call print_char           ; Exibir caractere
+    mov cx, title_display_length
+    mov bl, 02H                         ;Cor do texto
+    xor dx, dx                          ;Zerar linha coluna
+    call print_char
 
-    ; Incrementar a posição na linha
-    inc dl
-    inc si                    ; Avançar para o próximo caractere
-    
-    ; Verificar se alcançou a coluna máxima (80 colunas)
-    cmp dl, al                ; Comparar com o valor de 80 colunas (em AL)
-    je  done_show_title
-
-    ; Continuar o loop se ainda não terminou
-    jmp show_title_loop
-
-done_show_title:
-    ret
+    ret    
 endp
-
-
-
 
 
 ;===========================================================
@@ -127,6 +94,8 @@ print_char proc
     ret
 
 endp
+
+;=============================================================
 
 show_botao proc
     push ax
@@ -160,6 +129,29 @@ exit_bot:
     pop ax
     ret
 endp
+
+;==============================================================
+
+_get_keystroke proc
+    mov ah, 001h
+    int 16h
+    jz .get_keystroke_end
+
+    mov ah, 000h
+    int 16h
+
+    .get_keystroke_end:
+      ret
+endp
+
+;===============================================================
+
+;====================================================================
+
+menu
+
+
+
 
 _main:
     mov AX, @data
