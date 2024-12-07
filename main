@@ -1,5 +1,4 @@
 .model small
-
 .stack 0100h
 
 .data
@@ -13,7 +12,6 @@
     HIGHLIGHT_COLOR         db 4        ; Cor vermelha para seleção
     NORMAL_COLOR            db 7        ; Cor cinza para botões não selecionados
     DELTA_TIME              dw 00000h, 061A8h
-    
     
     ; Variáveis auxiliares
     menu                    db 0        ; Controle do menu (0 = Iniciar, 1 = Sair)
@@ -53,7 +51,6 @@
 ;=====================================================================
 show_title_menu proc
 
-
     mov ax, ds 
     mov es, ax
 
@@ -65,7 +62,6 @@ show_title_menu proc
 
     ret    
 endp
-
 
 ;===========================================================
 
@@ -98,6 +94,7 @@ endp
 ;=============================================================
 
 show_botao proc
+    ;show_botao proc
     push ax
     mov bl, 0FH
     mov ah, menu
@@ -128,6 +125,61 @@ exit_bot:
 
     pop ax
     ret
+    call change_button_color
+    ret
+endp
+
+;=============================================================
+change_button_color proc
+    ; Exibe o botão INICIAR
+    mov ah, menu           ; Verifica se o menu selecionado é "Iniciar" ou "Sair"
+    cmp ah, 0              ; Se "Iniciar"
+    je start_selected
+
+    ; Se "Iniciar" não está selecionado, desenha "Iniciar" com cor normal
+    mov bl, NORMAL_COLOR   ; Cor normal (cinza)
+    mov bp, offset botao_start
+    mov cx, botao_start_length
+    xor dl, dl             ; Coluna 0
+    mov dh, 18             ; Linha 18
+    call print_char
+    jmp exit_selected
+
+start_selected:
+    ; Se "Iniciar" está selecionado, desenha com cor de destaque (vermelho)
+    mov bl, HIGHLIGHT_COLOR   ; Cor de destaque (vermelho)
+    mov bp, offset botao_start
+    mov cx, botao_start_length
+    xor dl, dl             ; Coluna 0
+    mov dh, 18             ; Linha 18
+    call print_char
+
+exit_selected:
+    ; Exibe o botão SAIR
+    mov ah, menu           ; Verifica se o menu selecionado é "Sair"
+    cmp ah, 1              ; Se "Sair"
+    je exit_selected_highlight
+
+    ; Se "Sair" não está selecionado, desenha "Sair" com cor normal
+    mov bl, NORMAL_COLOR   ; Cor normal (cinza)
+    mov bp, offset botao_exit
+    mov cx, botao_exit_length
+    xor dl, dl             ; Coluna 0
+    mov dh, 21             ; Linha 21
+    call print_char
+    jmp finish
+
+exit_selected_highlight:
+    ; Se "Sair" está selecionado, desenha com cor de destaque (vermelho)
+    mov bl, HIGHLIGHT_COLOR   ; Cor de destaque (vermelho)
+    mov bp, offset botao_exit
+    mov cx, botao_exit_length
+    xor dl, dl             ; Coluna 0
+    mov dh, 21             ; Linha 21
+    call print_char
+
+finish:
+    ret
 endp
 
 ;==============================================================
@@ -145,10 +197,11 @@ _get_keystroke proc
 endp
 
 ;===============================================================
+keystroke_move proc
 
-;====================================================================
 
-menu
+
+endp
 
 
 
@@ -168,6 +221,29 @@ _main:
 
     ; Inicializa o menu
     call show_title_menu
-    call show_botao
 
+    ; Loop de navegação do menu
+menu_loop:
+    call show_botao
+    call _get_keystroke
+               
+    ;je select_option
+    jmp menu_loop
+    
+
+    ;select_option:
+    ; Executar a ação com base na seleção (Iniciar ou Sair)
+    ;cmp menu, 0
+    ;je start_game
+    ;cmp menu, 1
+    ;je exit_game
+    ;jmp menu_loop
+
+    ;start_game:
+    ; Adicione o código para iniciar o jogo
+    ;jmp menu_loop
+
+    ;exit_game:
+    ; Adicione o código para sair do jogo
+    ;ret
 end _main
