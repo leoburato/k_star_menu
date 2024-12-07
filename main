@@ -1,0 +1,181 @@
+.model small
+
+.stack 0100h
+
+.data
+
+    SCREEN_W                equ 320     ; Largura da tela
+    SCREEN_H                equ 200     ; Altura da tela
+    GAME_CONTROLS           dw 01177h   ; Up (W)
+                            dw 01F73h   ; Down (S)
+                            dw 03920h   ; Shot (Space)
+                            dw 0011Bh   ; Pause (Esc)
+    HIGHLIGHT_COLOR         db 4        ; Cor vermelha para seleção
+    NORMAL_COLOR            db 7        ; Cor cinza para botões não selecionados
+    DELTA_TIME              dw 00000h, 061A8h
+    TEXT_COLOR              db 2        ; Cor verde para o texto
+    
+    
+    ; Variáveis auxiliares
+    menu                    db 0        ; Controle do menu (0 = Iniciar, 1 = Sair)
+    screen                  db 0        ; Controle de tela
+    max_colunas dw 80       ; Número máximo de colunas (80)
+    max_linhas dw 12        ; Número máximo de linhas (12)
+    
+    ; Título
+    title_display db " _   __         _____  _                ", 13,10
+                   db "| | / /        /  ___|| |               ", 13,10
+                   db "| |/ /  ______ \ `--. | |_   __ _  _ __ ", 13,10
+                   db "|    \ |______| `--. \| __| / _` || '__|", 13,10
+                   db "| |\  \        /\__/ /| |_ | (_| || |   ", 13,10
+                   db "\_| \_/        \____/  \__| \__,_||_|   ", 13,10
+                   db "______         _                 _      ", 13,10
+                   db "| ___ \       | |               | |     ", 13,10
+                   db "| |_/ /  __ _ | |_  _ __   ___  | |     ", 13,10
+                   db "|  __/  / _` || __| / '__| / _ \ | |     ", 13,10
+                   db "| |    | (_| || |_ | |   | (_) || |     ", 13,10
+                   db "\_|     \__,_| \__||_|    \___/ |_|     ", 13,10
+
+    ; Calculando o comprimento do título
+    title_display_length equ $-title_display
+                       
+    botao_start    db 14 dup(" "),218,196,196,196,196,196,196,196,196,196,191,13,10
+                   db 14 dup(" "),179," INICIAR ",179,10,13
+                   db 14 dup(" "),192,196,196,196,196,196,196,196,196,196,217,13,10
+                       
+    botao_start_length equ $-botao_start
+    
+    botao_exit     db 14 dup(" "),218,196,196,196,196,196,196,196,196,196,191,13,10
+                   db 14 dup(" "),179,"  SAIR   ",179,10,13
+                   db 14 dup(" "),192,196,196,196,196,196,196,196,196,196,217,13,10
+                       
+    botao_exit_length equ $-botao_exit
+
+.code
+
+show_title_menu proc
+    mov ax, ds
+    mov es, ax
+
+    ; Definir posição na tela (linha 5, coluna 0)
+    mov ah, 02h              ; Função para mover o cursor
+    xor bh, bh               ; Página de vídeo 0
+    mov dh, 5                ; Linha 5 (um pouco abaixo do topo)
+    mov dl, 0                ; Coluna 0
+    int 10h                  ; Chamada para mover o cursor
+
+    ; Exibir título com limite de 80 colunas
+    mov bp, offset title_display
+    mov cx, title_display_length ; Tamanho do título
+    mov bl, TEXT_COLOR        ; Cor do texto (por exemplo, verde)
+    
+    ; Variáveis de controle para controlar a largura da linha
+    mov si, 0                 ; Índice para percorrer o título
+    mov dl, 0                 ; Coluna inicial
+    
+    ; Carregar a parte baixa de max_colunas (80 colunas)
+    mov al, 80                ; Limitar a 80 colunas, 0x50 em hexadecimal
+    
+show_title_loop:
+    ; Exibir um caractere do título
+    mov al, [bp + si]         ; Carregar caractere
+    call print_char           ; Exibir caractere
+
+    ; Incrementar a posição na linha
+    inc dl
+    inc si                    ; Avançar para o próximo caractere
+    
+    ; Verificar se alcançou a coluna máxima (80 colunas)
+    cmp dl, al                ; Comparar com o valor de 80 colunas (em AL)
+    je  done_show_title
+
+    ; Continuar o loop se ainda não terminou
+    jmp show_title_loop
+
+done_show_title:
+    ret
+endp
+
+
+
+
+
+;===========================================================
+
+print_char proc
+    ; Função para imprimir um caractere na tela
+    push AX
+    push BX
+    push DS
+    push ES
+    push SI
+    push BP
+
+    ; Configura os parâmetros para a função 13h
+    mov ah, 13h         ; Função para escrever string com atributos de cor
+    mov al, 1           ; Modo: atualiza cursor após a escrita
+    xor bh, bh           ; Página de vídeo 0
+    mov dl, [bp]         ; Caractere a ser impresso
+    int 10h             ; Chamada de interrupção para exibir a string
+
+    pop BP
+    pop SI
+    pop ES
+    pop DS
+    pop BX
+    pop AX
+    ret
+
+endp
+
+show_botao proc
+    push ax
+    mov bl, 0FH
+    mov ah, menu
+    cmp ah, 0
+    jne start_bot
+    mov bl, 0CH
+
+start_bot:
+    ; Exibe o botão INICIAR
+    mov bp, offset botao_start
+    mov cx, botao_start_length ; tamanho
+    xor dl, dl ; coluna
+    mov dh, 18 ; linha
+    call print_char
+
+    mov bl, 0FH
+    mov ah, menu
+    cmp ah, 1
+    jne exit_bot
+    mov bl, 0CH
+
+exit_bot:
+    mov bp, offset botao_exit
+    mov cx, botao_exit_length
+    xor dl, dl ; coluna
+    mov dh, 21 ; linha
+    call print_char
+
+    pop ax
+    ret
+endp
+
+_main:
+    mov AX, @data
+    mov DS, AX
+    mov AX, 0A000H
+    mov ES, AX
+    xor DI, DI
+
+    ; Modo gráfico 13h
+    xor ah, ah
+    xor bh, bh
+    mov ax, 13h
+    int 10h
+
+    ; Inicializa o menu
+    call show_title_menu
+    call show_botao
+
+end _main
