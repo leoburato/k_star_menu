@@ -15,7 +15,7 @@
     
     ; Variáveis auxiliares
     menu                    db 0        ; Controle do menu (0 = Iniciar, 1 = Sair)
-    screen                  db 0        ; Controle de tela
+    screen                  db 0        ; Controle de tela (0 = Menu Principal, 1 = Próxima Tela)
     
     ; Título
     title_display  db " _   __         _____  _                "
@@ -33,6 +33,8 @@
 
     ; Calculando o comprimento do título
     title_display_length equ $-title_display
+    
+;=======================================================================
                        
     botao_start    db 14 dup(" "),218,196,196,196,196,196,196,196,196,196,191,13,10
                    db 14 dup(" "),179," INICIAR ",179,10,13
@@ -45,6 +47,31 @@
                    db 14 dup(" "),192,196,196,196,196,196,196,196,196,196,217,13,10
                        
     botao_exit_length equ $-botao_exit
+    
+    
+ ;=======================================================================   
+    
+    title_sector1  db "   ____       __                   ___ ",13,10    
+                   db "  / __/ ___  / /_ ___   ____      <  / ",13,10    
+                   db " _\ \  / -_)/ __// _ \ / __/      / /  ",13,10   
+                   db "/___/  \__/ \__/ \___//_/        /_/   ",13,10    
+                                           
+    title_sector1_length equ $-title_sector1
+    
+    title_sector2  db "   ____       __                   ___ ",13,10     
+                   db "  / __/ ___  / /_ ___   ____      |_  |",13,10     
+                   db " _\ \  / -_)/ __// _ \ / __/     / __/ ",13,10     
+                   db "/___/  \__/ \__/ \___//_/       /____/ ",13,10    
+                                                              
+    title_sector2_length equ $-title_sector2
+    
+    title_sector3  db "   ____       __                  ____ ",13,10     
+                   db "  / __/ ___  / /_ ___   ____     |_  / ",13,10     
+                   db " _\ \  / -_)/ __// _ \ / __/     _/_ < ",13,10    
+                   db "/___/  \__/ \__/ \___//_/       /____/ ",13,10    
+                                                              
+    title_sector3_length equ $-title_sector3   
+    
 
 .code
 
@@ -56,7 +83,7 @@ show_title_menu proc
 
     lea bp, title_display
     mov cx, title_display_length
-    mov bl, 02h          ; Cor azul
+    mov bl, 02h          ; Cor verde
     xor dx, dx           ; Posição inicial (linha 0, coluna 0)
     call print_char
     ret
@@ -128,7 +155,7 @@ show_botao proc
 endp
 
 ;=====================================================================
-_get_keystroke proc
+_get_keystroke_menu proc
     ; Captura a entrada do teclado e altera a seleção
     mov ah, 0
     int 16h             ; Lê a tecla pressionada
@@ -140,6 +167,8 @@ _get_keystroke proc
     je .key_down
     cmp al, 's'
     je .key_down
+    cmp al, ' '          ; Verifica se a tecla é espaço
+    je .select
     ret
 .key_up:
     dec menu
@@ -156,9 +185,50 @@ _get_keystroke proc
     mov menu, 0
 .done:
     ret
+.select:
+    call select_option
+    ret
 endp
 
 ;=====================================================================
+
+select_option proc
+    ; Executa ação baseada no botão selecionado
+    mov ah, menu
+    cmp ah, 0            ; Se "Iniciar" está selecionado
+    je .start_game
+    cmp ah, 1            ; Se "Sair" está selecionado
+    je .exit_game
+    ret
+.start_game:
+    mov screen, 1        ; Próxima tela
+    ret
+.exit_game:
+    mov ax, 4C00h        ; Termina o programa
+    int 21h
+endp
+
+;=====================================================================
+show_sector1_title proc
+    ; Exibe o título da próxima tela (SECTOR 1) no centro
+    mov ax, @data
+    mov es, ax
+    
+    
+    lea bp, title_sector1
+    mov cx, title_sector1_length
+    mov dx, cx
+    
+    mov dh, 10           ; Linha
+    xor dl, dl           ; Coluna
+    mov bl, 05h 
+    call print_char
+
+    ret
+endp
+
+;=====================================================================
+
 _main:
     mov ax, @data
     mov ds, ax
@@ -172,8 +242,28 @@ _main:
     call show_title_menu
 
 menu_loop:
+    cmp screen, 0
+    je .menu_screen
+    jmp .next_screen
+
+.menu_screen:
     call show_botao
-    call _get_keystroke
+    call _get_keystroke_menu
     jmp menu_loop
+
+.next_screen:
+    ; Limpa a tela
+    mov ax, 0A000h
+    mov es, ax
+    xor di, di
+    mov cx, 32000        ; 320x200 = 64000 bytes / 2
+    xor ax, ax           ; Cor preta
+    rep stosw
+
+    ; Exibe o título da próxima tela
+    call show_sector1_title
+
+    ; Fica na próxima tela
+    jmp $
 
 end _main
