@@ -50,200 +50,130 @@
 
 ;=====================================================================
 show_title_menu proc
-
-    mov ax, ds 
+    ; Exibe o título na tela
+    mov ax, @data
     mov es, ax
 
-    mov bp, offset title_display
+    lea bp, title_display
     mov cx, title_display_length
-    mov bl, 02H                         ;Cor do texto
-    xor dx, dx                          ;Zerar linha coluna
+    mov bl, 02h          ; Cor azul
+    xor dx, dx           ; Posição inicial (linha 0, coluna 0)
     call print_char
-
-    ret    
-endp
-
-;===========================================================
-
-print_char proc
-    ; Função para imprimir um caractere na tela
-    push AX
-    push BX
-    push DS
-    push ES
-    push SI
-    push BP
-
-    ; Configura os parâmetros para a função 13h
-    mov ah, 13h         ; Função para escrever string com atributos de cor
-    mov al, 1           ; Modo: atualiza cursor após a escrita
-    xor bh, bh           ; Página de vídeo 0
-    mov dl, [bp]         ; Caractere a ser impresso
-    int 10h             ; Chamada de interrupção para exibir a string
-
-    pop BP
-    pop SI
-    pop ES
-    pop DS
-    pop BX
-    pop AX
     ret
-
 endp
 
-;=============================================================
-
-show_botao proc
-    ;show_botao proc
+;=====================================================================
+print_char proc
+    ; Função para imprimir uma string na tela com atributos de cor
     push ax
-    mov bl, 0FH
-    mov ah, menu
-    cmp ah, 0
-    jne start_bot
-    mov bl, 0CH
+    push bx
+    push bp
+    push cx
 
-start_bot:
-    ; Exibe o botão INICIAR
-    mov bp, offset botao_start
-    mov cx, botao_start_length ; tamanho
-    xor dl, dl ; coluna
-    mov dh, 18 ; linha
-    call print_char
+    mov ah, 13h          ; Função para imprimir string com cor
+    mov al, 1            ; Atualiza o cursor
+    xor bh, bh           ; Página 0
+    int 10h              ; Interrupção de vídeo
 
-    mov bl, 0FH
-    mov ah, menu
-    cmp ah, 1
-    jne exit_bot
-    mov bl, 0CH
-
-exit_bot:
-    mov bp, offset botao_exit
-    mov cx, botao_exit_length
-    xor dl, dl ; coluna
-    mov dh, 21 ; linha
-    call print_char
-
+    pop cx
+    pop bp
+    pop bx
     pop ax
     ret
-    call change_button_color
+endp
+
+;=====================================================================
+show_botao proc
+    ; Exibe os botões com destaque no selecionado
+    push ax
+    push bx
+    push cx
+    push bp
+
+    ; Botão INICIAR
+    mov ah, menu
+    cmp ah, 0
+    jne .normal_start
+    mov bl, HIGHLIGHT_COLOR
+    jmp .draw_start
+.normal_start:
+    mov bl, NORMAL_COLOR
+.draw_start:
+    lea bp, botao_start
+    mov cx, botao_start_length
+    mov dh, 18           ; Linha
+    xor dl, dl           ; Coluna
+    call print_char
+
+    ; Botão SAIR
+    mov ah, menu
+    cmp ah, 1
+    jne .normal_exit
+    mov bl, HIGHLIGHT_COLOR
+    jmp .draw_exit
+.normal_exit:
+    mov bl, NORMAL_COLOR
+.draw_exit:
+    lea bp, botao_exit
+    mov cx, botao_exit_length
+    mov dh, 21           ; Linha
+    xor dl, dl           ; Coluna
+    call print_char
+
+    pop bp
+    pop cx
+    pop bx
+    pop ax
     ret
 endp
 
-;=============================================================
-change_button_color proc
-    ; Exibe o botão INICIAR
-    mov ah, menu           ; Verifica se o menu selecionado é "Iniciar" ou "Sair"
-    cmp ah, 0              ; Se "Iniciar"
-    je start_selected
-
-    ; Se "Iniciar" não está selecionado, desenha "Iniciar" com cor normal
-    mov bl, NORMAL_COLOR   ; Cor normal (cinza)
-    mov bp, offset botao_start
-    mov cx, botao_start_length
-    xor dl, dl             ; Coluna 0
-    mov dh, 18             ; Linha 18
-    call print_char
-    jmp exit_selected
-
-start_selected:
-    ; Se "Iniciar" está selecionado, desenha com cor de destaque (vermelho)
-    mov bl, HIGHLIGHT_COLOR   ; Cor de destaque (vermelho)
-    mov bp, offset botao_start
-    mov cx, botao_start_length
-    xor dl, dl             ; Coluna 0
-    mov dh, 18             ; Linha 18
-    call print_char
-
-exit_selected:
-    ; Exibe o botão SAIR
-    mov ah, menu           ; Verifica se o menu selecionado é "Sair"
-    cmp ah, 1              ; Se "Sair"
-    je exit_selected_highlight
-
-    ; Se "Sair" não está selecionado, desenha "Sair" com cor normal
-    mov bl, NORMAL_COLOR   ; Cor normal (cinza)
-    mov bp, offset botao_exit
-    mov cx, botao_exit_length
-    xor dl, dl             ; Coluna 0
-    mov dh, 21             ; Linha 21
-    call print_char
-    jmp finish
-
-exit_selected_highlight:
-    ; Se "Sair" está selecionado, desenha com cor de destaque (vermelho)
-    mov bl, HIGHLIGHT_COLOR   ; Cor de destaque (vermelho)
-    mov bp, offset botao_exit
-    mov cx, botao_exit_length
-    xor dl, dl             ; Coluna 0
-    mov dh, 21             ; Linha 21
-    call print_char
-
-finish:
-    ret
-endp
-
-;==============================================================
-
+;=====================================================================
 _get_keystroke proc
-    mov ah, 001h
-    int 16h
-    jz .get_keystroke_end
-
-    mov ah, 000h
-    int 16h
-
-    .get_keystroke_end:
-      ret
+    ; Captura a entrada do teclado e altera a seleção
+    mov ah, 0
+    int 16h             ; Lê a tecla pressionada
+    cmp al, 'W'
+    je .key_up
+    cmp al, 'w'
+    je .key_up
+    cmp al, 'S'
+    je .key_down
+    cmp al, 's'
+    je .key_down
+    ret
+.key_up:
+    dec menu
+    cmp menu, -1
+    jl .wrap_down
+    ret
+.wrap_down:
+    mov menu, 1
+    ret
+.key_down:
+    inc menu
+    cmp menu, 2
+    jl .done
+    mov menu, 0
+.done:
+    ret
 endp
 
-;===============================================================
-keystroke_move proc
-
-
-
-endp
-
-
-
-
+;=====================================================================
 _main:
-    mov AX, @data
-    mov DS, AX
-    mov AX, 0A000H
-    mov ES, AX
-    xor DI, DI
+    mov ax, @data
+    mov ds, ax
+    mov ax, 0A000h
+    mov es, ax
 
-    ; Modo gráfico 13h
-    xor ah, ah
-    xor bh, bh
+    ; Inicializa modo gráfico 13h
     mov ax, 13h
     int 10h
 
-    ; Inicializa o menu
     call show_title_menu
 
-    ; Loop de navegação do menu
 menu_loop:
     call show_botao
     call _get_keystroke
-               
-    ;je select_option
     jmp menu_loop
-    
 
-    ;select_option:
-    ; Executar a ação com base na seleção (Iniciar ou Sair)
-    ;cmp menu, 0
-    ;je start_game
-    ;cmp menu, 1
-    ;je exit_game
-    ;jmp menu_loop
-
-    ;start_game:
-    ; Adicione o código para iniciar o jogo
-    ;jmp menu_loop
-
-    ;exit_game:
-    ; Adicione o código para sair do jogo
-    ;ret
 end _main
